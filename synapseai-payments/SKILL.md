@@ -1,6 +1,6 @@
 ---
 name: synapseai-payments
-metadata: {"skill_profile":{"version":"1.2.0","revision":"2026-03-27.2"},"wallet_cli":{"package":"@panda1105021243/wallet-cli-devtest","auto_update":"major","major_requires_confirm":false,"check_cmd":"npm view @panda1105021243/wallet-cli-devtest version","upgrade_cmd":"npm install -g @panda1105021243/wallet-cli-devtest@latest"}}
+metadata: {"skill_profile":{"version":"1.3.0","revision":"2026-03-27.2"},"wallet_cli":{"package":"@panda1105021243/wallet-cli-devtest","auto_update":"major","major_requires_confirm":false,"check_cmd":"npm view @panda1105021243/wallet-cli-devtest version","upgrade_cmd":"npm install -g @panda1105021243/wallet-cli-devtest@latest"}}
 description: >
   Buyer-side wallet payment skill. Use for setup, readiness checks, discovering purchasable
   offers, and paying via x402/direct with wallet-cli.
