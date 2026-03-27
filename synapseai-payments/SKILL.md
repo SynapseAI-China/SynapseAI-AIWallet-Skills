@@ -1,10 +1,9 @@
 ---
 name: synapseai-payments
-metadata: {"skill_profile":{"version":"1.1.3","revision":"2026-03-27.1"},"wallet_cli":{"package":"@panda1105021243/wallet-cli-devtest","auto_update":"major","major_requires_confirm":false,"check_cmd":"npm view @panda1105021243/wallet-cli-devtest version","upgrade_cmd":"npm install -g @panda1105021243/wallet-cli-devtest@latest"}}
+metadata: {"skill_profile":{"version":"1.2.0","revision":"2026-03-27.2"},"wallet_cli":{"package":"@panda1105021243/wallet-cli-devtest","auto_update":"major","major_requires_confirm":false,"check_cmd":"npm view @panda1105021243/wallet-cli-devtest version","upgrade_cmd":"npm install -g @panda1105021243/wallet-cli-devtest@latest"}}
 description: >
-  Unified wallet payment skill. Use for wallet-cli setup, x402 spend, direct spend,
-  x402 merchant init/list/catalog, offer create/update/list, wallet status checks,
-  and agent selection. If user says "use wallet-cli" or mentions x402, always execute via wallet-cli.
+  Buyer-side wallet payment skill. Use for setup, readiness checks, discovering purchasable
+  offers, and paying via x402/direct with wallet-cli.
 ---
 
 # SynapseAI Payments
@@ -18,11 +17,11 @@ description: >
 
 ## CLI Sync Policy
 
-Before execution:
+Run version sync **once at session start**:
 - `npm view @panda1105021243/wallet-cli-devtest version`
 - `wallet-cli --version`
 
-If local is behind, upgrade:
+If local is behind, upgrade once:
 - `npm install -g @panda1105021243/wallet-cli-devtest@latest`
 
 After upgrade:
@@ -41,23 +40,20 @@ Route user intent to one command family:
   - wait for owner bind if needed
 
 - Wallet status / readiness / policy / balance
-  - Always run `wallet-cli whoami` before reporting status (this syncs local `wallet_status`)
+  - Always run `wallet-cli whoami` before reporting status
   - For multi-agent checks, run `wallet-cli whoami --agent-id <id>` for each agent before summary
   - if troubleshooting: `wallet-cli doctor`
+
+- Discover purchasable offers
+  - Primary: `wallet-cli merchant catalog`
+  - Fallback: `wallet-cli merchant offer list --status ACTIVE [--merchant-id <merchant_code>]`
+  - Fallback for merchant existence: `wallet-cli merchant list`
 
 - Spend via x402 (paid external API)
   - `wallet-cli spend x402 ...`
 
 - Spend direct (internal balance deduction)
   - `wallet-cli spend direct ...`
-
-- Merchant x402 setup / discovery / offers
-  - `wallet-cli merchant init ...`
-  - `wallet-cli merchant list`
-  - `wallet-cli merchant catalog ...`
-  - `wallet-cli merchant offer list ...`
-  - `wallet-cli merchant offer create ...`
-  - `wallet-cli merchant offer update ...`
 
 - Multi-agent targeting
   - default: `current_agent_id`
@@ -69,36 +65,18 @@ Route user intent to one command family:
 Auto-fill missing fields with deterministic defaults.
 
 ### Spend x402 defaults
-- `merchant`: `x402engine`
 - `method`: `GET`
 - `amount-hint`: `0.001`
 - `purpose`: `x402 call`
+- If buying platform-internal offers, use merchant/endpoint from Discovery Gate results.
 
 ### Spend direct defaults
 - `merchant`: `openai_api`
 
 ### URL resolution priority for x402
 - If user provides URL: use it directly.
-- If user intent is to buy platform-internal merchant offers: run Discovery Gate first (`merchant list` / `merchant offer list` / `merchant catalog`) and use discovered endpoint.
-- Otherwise, if user does not provide URL: use built-in task templates.
-- If no template matches: ask one concise question for target endpoint/provider.
-
-Built-in x402 task templates:
-
-- `btc_price`
-  - URL: `https://x402-gateway-production.up.railway.app/api/crypto/price?ids=bitcoin`
-  - Method: `GET`
-  - Merchant: `x402engine`
-  - Amount hint: `0.001`
-  - Purpose: `x402 btc price lookup`
-
-- `gpt4o_mini_hello`
-  - URL: `https://x402-gateway-production.up.railway.app/api/llm/gpt-4o-mini`
-  - Method: `POST`
-  - Body: `{"messages":[{"role":"user","content":"Say hello"}],"max_tokens":32}`
-  - Merchant: `x402engine`
-  - Amount hint: `0.003`
-  - Purpose: `x402 llm hello`
+- If user intent is to buy platform-internal merchant offers: run Discovery Gate first and use discovered endpoint.
+- Otherwise, ask one concise question for target endpoint/provider.
 
 ## Discovery Gate (Required for x402 purchase)
 
@@ -111,9 +89,9 @@ Before any x402 purchase, resolve all required fields:
 If any field is missing, do not pay. Return missing fields explicitly.
 
 Recommended command sequence:
-- `wallet-cli merchant list` (public discovery, no agent token required)
-- `wallet-cli merchant offer list --status ACTIVE [--merchant-id <merchant_code>]` (agent context required)
-- `wallet-cli merchant catalog` (agent context required)
+- `wallet-cli merchant catalog` (primary, agent context required)
+- If catalog is incomplete or fails: `wallet-cli merchant offer list --status ACTIVE [--merchant-id <merchant_code>]` (agent context required)
+- If merchant existence needs verification: `wallet-cli merchant list` (public discovery, no agent token required)
 
 Parameter semantics:
 - `--merchant-id` expects **merchant_code** (for example: `x402engine`), not database primary id.
@@ -173,29 +151,20 @@ wallet-cli whoami
 ## Command Examples
 
 ```bash
+# primary query path: purchasable catalog
+wallet-cli merchant catalog
+
+# fallback: list active offers
+wallet-cli merchant offer list --status ACTIVE
+
+# fallback: verify merchants
+wallet-cli merchant list
+
 # x402 spend
-wallet-cli spend x402 --url https://x402-gateway-production.up.railway.app/api/crypto/price?ids=bitcoin --method GET --amount-hint 0.001 --purpose "x402 btc price lookup"
+wallet-cli spend x402 --url <execute_url> --method GET --amount-hint 0.001 --purpose "purchase offer"
 
 # direct spend
 wallet-cli spend direct --merchant openai_api --amount 5.0 --purpose "GPT-4 API credits"
-
-# init x402 merchant
-wallet-cli merchant init --display-name "Premium API Store"
-
-# list merchants
-wallet-cli merchant list
-
-# list active offers
-wallet-cli merchant offer list --status ACTIVE
-
-# aggregated catalog (merchant + active offers + price + endpoint)
-wallet-cli merchant catalog
-
-# create offer
-wallet-cli merchant offer create --title "Premium API Access" --unit-price 10 --offer-type PRODUCT --description "30 days"
-
-# update offer
-wallet-cli merchant offer update --offer-id mof_xxxxxxxxxxxx --status ACTIVE --unit-price 12
 
 # health check
 wallet-cli doctor
