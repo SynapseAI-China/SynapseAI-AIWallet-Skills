@@ -1,10 +1,10 @@
 ---
 name: synapseai-payments
-metadata: {"skill_profile":{"version":"1.1.1","revision":"2026-03-24.6"},"wallet_cli":{"package":"@panda1105021243/wallet-cli-devtest","auto_update":"major","major_requires_confirm":false,"check_cmd":"npm view @panda1105021243/wallet-cli-devtest version","upgrade_cmd":"npm install -g @panda1105021243/wallet-cli-devtest@latest"}}
+metadata: {"skill_profile":{"version":"1.1.3","revision":"2026-03-27.1"},"wallet_cli":{"package":"@panda1105021243/wallet-cli-devtest","auto_update":"major","major_requires_confirm":false,"check_cmd":"npm view @panda1105021243/wallet-cli-devtest version","upgrade_cmd":"npm install -g @panda1105021243/wallet-cli-devtest@latest"}}
 description: >
   Unified wallet payment skill. Use for wallet-cli setup, x402 spend, direct spend,
-  receiving wallets, payment links, webhook config, and wallet status checks.
-  If user says "use wallet-cli" or mentions x402, always execute via wallet-cli.
+  x402 merchant init/list/catalog, offer create/update/list, wallet status checks,
+  and agent selection. If user says "use wallet-cli" or mentions x402, always execute via wallet-cli.
 ---
 
 # SynapseAI Payments
@@ -51,12 +51,13 @@ Route user intent to one command family:
 - Spend direct (internal balance deduction)
   - `wallet-cli spend direct ...`
 
-- Receive / merchant operations
-  - `wallet-cli receive enable`
-  - `wallet-cli receive wallet create ...`
-  - `wallet-cli receive link create ...`
-  - `wallet-cli receive webhook set ...`
-  - `wallet-cli receive status`
+- Merchant x402 setup / discovery / offers
+  - `wallet-cli merchant init ...`
+  - `wallet-cli merchant list`
+  - `wallet-cli merchant catalog ...`
+  - `wallet-cli merchant offer list ...`
+  - `wallet-cli merchant offer create ...`
+  - `wallet-cli merchant offer update ...`
 
 - Multi-agent targeting
   - default: `current_agent_id`
@@ -76,15 +77,10 @@ Auto-fill missing fields with deterministic defaults.
 ### Spend direct defaults
 - `merchant`: `openai_api`
 
-### Receive defaults
-- `network`: `BASE`
-- `currency`: `USDC`
-- wallet `label`: `Primary Receiving Wallet`
-- webhook `events`: `payment.success`
-
-### URL resolution for x402
+### URL resolution priority for x402
 - If user provides URL: use it directly.
-- If user does not provide URL: use built-in task templates.
+- If user intent is to buy platform-internal merchant offers: run Discovery Gate first (`merchant list` / `merchant offer list` / `merchant catalog`) and use discovered endpoint.
+- Otherwise, if user does not provide URL: use built-in task templates.
 - If no template matches: ask one concise question for target endpoint/provider.
 
 Built-in x402 task templates:
@@ -103,6 +99,26 @@ Built-in x402 task templates:
   - Merchant: `x402engine`
   - Amount hint: `0.003`
   - Purpose: `x402 llm hello`
+
+## Discovery Gate (Required for x402 purchase)
+
+Before any x402 purchase, resolve all required fields:
+- `merchant` (target merchant)
+- `offer` (valid product/service)
+- `unit_price` (price)
+- `endpoint` / `target_url` (paid endpoint)
+
+If any field is missing, do not pay. Return missing fields explicitly.
+
+Recommended command sequence:
+- `wallet-cli merchant list` (public discovery, no agent token required)
+- `wallet-cli merchant offer list --status ACTIVE [--merchant-id <merchant_code>]` (agent context required)
+- `wallet-cli merchant catalog` (agent context required)
+
+Parameter semantics:
+- `--merchant-id` expects **merchant_code** (for example: `x402engine`), not database primary id.
+
+`merchant catalog` should be treated as the canonical aggregated view for: merchant + active offers + unit_price + endpoint/payment_link.
 
 ## Payment Readiness Gate (Required)
 
@@ -163,17 +179,23 @@ wallet-cli spend x402 --url https://x402-gateway-production.up.railway.app/api/c
 # direct spend
 wallet-cli spend direct --merchant openai_api --amount 5.0 --purpose "GPT-4 API credits"
 
-# receive enable
-wallet-cli receive enable
+# init x402 merchant
+wallet-cli merchant init --display-name "Premium API Store"
 
-# create receiving wallet
-wallet-cli receive wallet create --label "Premium API Store"
+# list merchants
+wallet-cli merchant list
 
-# create payment link
-wallet-cli receive link create --amount 10.0 --description "Premium API Access - 30 days"
+# list active offers
+wallet-cli merchant offer list --status ACTIVE
 
-# set webhook
-wallet-cli receive webhook set --url https://your-api.com/callback --events payment.success,payment.failed
+# aggregated catalog (merchant + active offers + price + endpoint)
+wallet-cli merchant catalog
+
+# create offer
+wallet-cli merchant offer create --title "Premium API Access" --unit-price 10 --offer-type PRODUCT --description "30 days"
+
+# update offer
+wallet-cli merchant offer update --offer-id mof_xxxxxxxxxxxx --status ACTIVE --unit-price 12
 
 # health check
 wallet-cli doctor
@@ -198,5 +220,4 @@ wallet-cli doctor
 | `REJECT` | policy violation | return reason and stop |
 | insufficient balance | wallet not funded | fund wallet, retry |
 | 401 invalid token | expired/wrong token | re-register |
-| 403 merchant disabled | merchant not enabled | run `wallet-cli receive enable` |
 | state missing | wrong path or first run | use user-level state path and register once |
