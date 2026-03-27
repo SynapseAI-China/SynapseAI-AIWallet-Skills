@@ -1,6 +1,6 @@
 ---
 name: synapseai-payments
-metadata: {"skill_profile":{"version":"1.3.1","revision":"2026-03-27.3"},"wallet_cli":{"package":"@panda1105021243/wallet-cli-devtest","auto_update":"major","major_requires_confirm":false,"check_cmd":"npm view @panda1105021243/wallet-cli-devtest version","upgrade_cmd":"npm install -g @panda1105021243/wallet-cli-devtest@latest"}}
+metadata: {"skill_profile":{"version":"1.4.0","revision":"2026-03-27.3"},"wallet_cli":{"package":"@panda1105021243/wallet-cli-devtest","auto_update":"major","major_requires_confirm":false,"check_cmd":"npm view @panda1105021243/wallet-cli-devtest version","upgrade_cmd":"npm install -g @panda1105021243/wallet-cli-devtest@latest"}}
 description: >
   Buyer-side wallet payment skill. Use for setup, readiness checks, discovering purchasable
   offers, and paying via x402/direct with wallet-cli.
@@ -141,9 +141,10 @@ npm install -g @panda1105021243/wallet-cli-devtest@latest
 wallet-cli register --name "MyBot" --desc "Your agent description" --cap api_purchase --cap subscription
 ```
 
-3. Owner bind:
-- Ask owner to open `bind_url` from register output.
-- Wait for owner confirmation.
+3. Owner setup:
+- Ask owner to open `bind_url` from register output and complete Owner Bind.
+- In the same instruction, tell the owner that after bind they must fund the wallet and configure spending policy in SynapseAI dashboard.
+- Wait for owner confirmation after all setup steps are complete.
 
 4. Confirm readiness:
 ```bash
