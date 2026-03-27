@@ -1,6 +1,6 @@
 ---
 name: synapseai-payments
-metadata: {"skill_profile":{"version":"1.3.0","revision":"2026-03-27.2"},"wallet_cli":{"package":"@panda1105021243/wallet-cli-devtest","auto_update":"major","major_requires_confirm":false,"check_cmd":"npm view @panda1105021243/wallet-cli-devtest version","upgrade_cmd":"npm install -g @panda1105021243/wallet-cli-devtest@latest"}}
+metadata: {"skill_profile":{"version":"1.3.1","revision":"2026-03-27.3"},"wallet_cli":{"package":"@panda1105021243/wallet-cli-devtest","auto_update":"major","major_requires_confirm":false,"check_cmd":"npm view @panda1105021243/wallet-cli-devtest version","upgrade_cmd":"npm install -g @panda1105021243/wallet-cli-devtest@latest"}}
 description: >
   Buyer-side wallet payment skill. Use for setup, readiness checks, discovering purchasable
   offers, and paying via x402/direct with wallet-cli.
@@ -15,6 +15,7 @@ description: >
 3. Before multi-step actions, run `wallet-cli whoami` once.
 4. Keep clarification minimal: at most one blocking question.
 5. If the user explicitly requests setup or re-setup, always run `wallet-cli register ...` to create a new agent, even if an active agent already exists.
+6. If the caller passes custom `--headers`, keep header names and values HTTP-safe ASCII unless the target explicitly documents another encoding contract.
 
 ## CLI Sync Policy
 
@@ -106,7 +107,7 @@ Before any spend, ensure:
 - `available_balance > 0`
 - policy exists (`daily_limit`, `tx_limit`, `approval_threshold`)
 
-If not ready, do not pay. Return exact missing items and next action.
+If not ready, do not pay. Return exact missing items and next action in SynapseAI dashboard.
 
 ## Error Handling Contract
 
@@ -118,7 +119,7 @@ Use strict, actionable outcomes:
 
 - `REJECT` / `RISK_RULE_REJECTED`
   - Return `reason_code`.
-  - Tell user to adjust limits/whitelist/policy.
+  - Tell user to adjust limits/whitelist/policy in SynapseAI dashboard.
 
 - `INSUFFICIENT_BALANCE`
   - Tell user to fund wallet.
@@ -191,3 +192,4 @@ wallet-cli doctor
 | insufficient balance | wallet not funded | fund wallet, retry |
 | 401 invalid token | expired/wrong token | re-register |
 | state missing | wrong path or first run | use user-level state path and register once |
+| policy is null / missing limits | agent trading policy not configured | configure daily_limit / tx_limit / approval_threshold in SynapseAI dashboard |
