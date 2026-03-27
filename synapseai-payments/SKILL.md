@@ -14,6 +14,7 @@ description: >
 2. If user asks for x402, never downgrade to non-x402 data sources.
 3. Before multi-step actions, run `wallet-cli whoami` once.
 4. Keep clarification minimal: at most one blocking question.
+5. If the user explicitly requests setup or re-setup, always run `wallet-cli register ...` to create a new agent, even if an active agent already exists.
 
 ## CLI Sync Policy
 
